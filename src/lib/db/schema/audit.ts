@@ -2,16 +2,15 @@
  * Audit Logs Schema (SR-005, SR-012, FR-047)
  *
  * IMMUTABLE — NO UPDATE OR DELETE OPERATIONS (SR-012):
- * This table is strictly append-only. No admin, super admin, or system
- * process may modify or delete audit log entries. There is intentionally
- * no `updatedAt` column.
+ * This table is strictly append-only.
  *
- * Covers all five SR-005 audit categories:
- * 1. auth       — Login success/failure (FR-005)
- * 2. attendance — Check-in/check-out events, token validation
- * 3. correction — Attendance corrections and overrides (FR-024)
- * 4. config     — Configuration changes (FR-047)
- * 5. export     — Report and payroll data exports
+ * Standardized audit categories:
+ * - AUTH       — Login success/failure, account lockout, logout
+ * - EMPLOYEE   — Create, update, soft delete, status change, bulk import
+ * - SHIFT      — Shift templates, shift assignment changes
+ * - PAYROLL    — Payroll computation, recalculation, finalization
+ * - ATTENDANCE — Check-in/check-out, QR generation/validation, overrides
+ * - SYSTEM     — System configuration changes, policy threshold updates
  */
 
 import {
@@ -26,34 +25,35 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./users";
 
-// ── Audit category enum ────────────────────────────────────────────────
+// ── Standardized Audit Category Enum ───────────────────────────────────
 export const auditCategoryEnum = pgEnum("audit_category", [
-  "auth",
-  "attendance",
-  "correction",
-  "config",
-  "export",
+  "AUTH",
+  "EMPLOYEE",
+  "SHIFT",
+  "PAYROLL",
+  "ATTENDANCE",
+  "SYSTEM",
 ]);
 
-// ── Audit Logs table ───────────────────────────────────────────────────
+// ── Audit Logs Table ───────────────────────────────────────────────────
 export const auditLogs = pgTable(
   "audit_logs",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     userId: uuid("user_id").references(() => users.id, {
       onDelete: "set null",
-    }), // nullable for system-initiated actions
-    action: varchar("action", { length: 100 }).notNull(), // e.g., LOGIN_SUCCESS, ATTENDANCE_CHECK_IN
+    }),
+    action: varchar("action", { length: 100 }).notNull(), // e.g. LOGIN_SUCCESS, EMPLOYEE_CREATED
     category: auditCategoryEnum("category").notNull(),
-    resourceType: varchar("resource_type", { length: 100 }), // e.g., employee, attendance_event
+    resourceType: varchar("resource_type", { length: 100 }), // e.g. employee, user, shift
     resourceId: uuid("resource_id"),
-    details: jsonb("details"), // Additional context (flexible schema)
-    ipAddress: varchar("ip_address", { length: 45 }), // Supports IPv6
+    details: jsonb("details"), // Flexible metadata: ip, userAgent, browser, os, requestId, sessionId, failureReason
+    ipAddress: varchar("ip_address", { length: 45 }),
     userAgent: text("user_agent"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
-    // NO updatedAt — this table is immutable (SR-012)
+    // Immutable — no updatedAt column
   },
   (table) => [
     index("audit_logs_user_id_idx").on(table.userId),

@@ -8,9 +8,9 @@
  * - HR/Payroll: Employee master data, payroll export, reports
  * - Employee: Login, attendance view, QR access, personal history only
  *
- * Uses NextAuth database session strategy (ADR §3) for server-side
- * session revocation — JWT sessions can't be revoked, which is
- * unacceptable for access control and fraud prevention (SR-004, FR-004).
+ * Account Lockout (Refinement #6):
+ * - failed_login_attempts (integer): Tracks consecutive failed login attempts.
+ * - locked_until (timestamp): Locks the account temporarily after 5 failed attempts.
  */
 
 import {
@@ -44,8 +44,10 @@ export const users = pgTable(
     email: varchar("email", { length: 255 }).notNull(),
     passwordHash: varchar("password_hash", { length: 255 }).notNull(),
     role: userRoleEnum("role").notNull().default("employee"),
-    employeeId: uuid("employee_id"), // FK to employees, set in relations
+    employeeId: uuid("employee_id"), // FK to employees
     isActive: boolean("is_active").notNull().default(true),
+    failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+    lockedUntil: timestamp("locked_until", { withTimezone: true }),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -63,10 +65,6 @@ export const users = pgTable(
 );
 
 // ── NextAuth Database Session Tables ───────────────────────────────────
-// Required by NextAuth's database session strategy (ADR §3).
-// These tables enable server-side session management so that deactivated
-// or compromised accounts can be revoked immediately (SR-004, FR-004).
-
 export const sessions = pgTable(
   "sessions",
   {

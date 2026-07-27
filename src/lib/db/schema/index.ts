@@ -45,3 +45,6 @@ export {
 
 // System configuration (FR-045, NFR-007)
 export { systemConfig } from "./config";
+
+// Import batches (Refinement #10)
+export { importBatches } from "./imports";

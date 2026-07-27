@@ -13,10 +13,13 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const session = await auth();
-  const userRole = (session?.user as any)?.role || "super_admin";
+  if (!session?.user) {
+    return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
 
-  if (session?.user && !canPerformAction(userRole, "EMPLOYEE_VIEW")) {
-    return apiError("AUTH_004", undefined, undefined, 403);
+  const userRole = (session.user as any).role;
+  if (!canPerformAction(userRole, "EMPLOYEE_VIEW")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
   const { id } = params;
@@ -36,11 +39,15 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   const session = await auth();
-  const userId = (session?.user as any)?.id || null;
-  const userRole = (session?.user as any)?.role || "super_admin";
+  if (!session?.user) {
+    return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
 
-  if (session?.user && !canPerformAction(userRole, "EMPLOYEE_UPDATE")) {
-    return apiError("AUTH_004", undefined, undefined, 403);
+  const userId = (session.user as any).id;
+  const userRole = (session.user as any).role;
+
+  if (!canPerformAction(userRole, "EMPLOYEE_UPDATE")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
   const { id } = params;
@@ -116,11 +123,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   const session = await auth();
-  const userId = (session?.user as any)?.id || null;
-  const userRole = (session?.user as any)?.role || "super_admin";
+  if (!session?.user) {
+    return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
 
-  if (session?.user && !canPerformAction(userRole, "EMPLOYEE_DELETE")) {
-    return apiError("AUTH_004", undefined, undefined, 403);
+  const userId = (session.user as any).id;
+  const userRole = (session.user as any).role;
+
+  if (!canPerformAction(userRole, "EMPLOYEE_DELETE")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
   const { id } = params;
@@ -136,7 +147,7 @@ export async function DELETE(
 
     const now = new Date();
 
-    // Soft deletion (Refinement #2)
+    // Soft deletion
     await db.transaction(async (tx) => {
       await tx
         .update(employees)

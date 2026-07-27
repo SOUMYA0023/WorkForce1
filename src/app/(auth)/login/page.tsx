@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -9,29 +10,28 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [lockoutMinutes, setLockoutMinutes] = useState<number | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg("");
-    setLockoutMinutes(null);
 
     try {
-      const res = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.error?.code === "AUTH_002") {
-          setLockoutMinutes(data.error?.details?.remainingMinutes || 15);
-          setErrorMsg(data.error.message);
+      if (!res || res.error) {
+        if (res?.error?.includes("ACCOUNT_LOCKED")) {
+          setErrorMsg("Account locked due to 5 consecutive failed login attempts. Please try again in 15 minutes.");
+        } else if (res?.error?.includes("EMPLOYEE_NOT_ACTIVE")) {
+          setErrorMsg("Employee status is not active. Attendance and portal login prohibited.");
+        } else if (res?.error?.includes("USER_INACTIVE")) {
+          setErrorMsg("User account is inactive.");
         } else {
-          setErrorMsg(data.error?.message || "Invalid email or password.");
+          setErrorMsg("Invalid email or password.");
         }
         setLoading(false);
         return;
@@ -39,6 +39,7 @@ export default function LoginPage() {
 
       // Success -> Redirect to dashboard
       router.push("/employees");
+      router.refresh();
     } catch (err: any) {
       setErrorMsg("Network error. Please check your connection.");
       setLoading(false);
@@ -87,10 +88,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
-            disabled={loading || lockoutMinutes !== null}
+            disabled={loading}
             style={{
               ...styles.button,
-              opacity: loading || lockoutMinutes !== null ? 0.6 : 1,
+              opacity: loading ? 0.6 : 1,
             }}
           >
             {loading ? "Authenticating..." : "Sign In"}

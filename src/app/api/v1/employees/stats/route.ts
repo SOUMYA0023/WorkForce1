@@ -7,6 +7,9 @@ import { auth } from "@/auth";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
+  if (!session?.user) {
+    return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
 
   try {
     // Total Non-Deleted Employees
@@ -21,7 +24,7 @@ export async function GET(req: NextRequest) {
       .from(employees)
       .where(and(eq(employees.status, "active"), isNull(employees.deletedAt)));
 
-    // Inactive Employees (inactive, suspended, terminated, on_leave)
+    // Inactive Employees
     const [inactiveRes] = await db
       .select({ count: count() })
       .from(employees)
@@ -34,7 +37,7 @@ export async function GET(req: NextRequest) {
       .orderBy(sql`${importBatches.createdAt} DESC`)
       .limit(5);
 
-    // Sum of failed records across all imports
+    // Total Failed Records
     const [failedImportsRes] = await db
       .select({ totalFailed: sql<number>`COALESCE(SUM(${importBatches.failedRecords}), 0)` })
       .from(importBatches);

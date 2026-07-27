@@ -13,11 +13,15 @@ export async function POST(req: NextRequest) {
   }
 
   const session = await auth();
-  const userId = (session?.user as any)?.id || "00000000-0000-0000-0000-000000000000";
-  const userRole = (session?.user as any)?.role || "super_admin";
+  if (!session?.user) {
+    return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
 
-  if (session?.user && !canPerformAction(userRole, "EMPLOYEE_IMPORT")) {
-    return apiError("AUTH_004", undefined, undefined, 403);
+  const userId = (session.user as any).id;
+  const userRole = (session.user as any).role;
+
+  if (!canPerformAction(userRole, "EMPLOYEE_IMPORT")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
   try {

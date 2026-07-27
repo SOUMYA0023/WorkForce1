@@ -19,7 +19,7 @@ import { logAuditEvent } from "../audit/logger";
 export const authOptions: any = {
   adapter: DrizzleAdapter(db) as any,
   session: {
-    strategy: "database",
+    strategy: "jwt", // JWT for fast edge token inspection & seamless API verification
     maxAge: (parseInt(process.env.SESSION_TIMEOUT_MINUTES || "30", 10)) * 60,
   },
   providers: [
@@ -146,16 +146,24 @@ export const authOptions: any = {
           email: user.email,
           role: user.role,
           employeeId: user.employeeId,
-        } as any;
+        };
       },
     }),
   ],
   callbacks: {
-    async session({ session, user }: any) {
+    async jwt({ token, user }: any) {
+      if (user) {
+        token.id = user.id;
+        token.role = user.role;
+        token.employeeId = user.employeeId;
+      }
+      return token;
+    },
+    async session({ session, token }: any) {
       if (session?.user) {
-        (session.user as any).id = user.id;
-        (session.user as any).role = (user as any).role;
-        (session.user as any).employeeId = (user as any).employeeId;
+        session.user.id = token.id || token.sub;
+        session.user.role = token.role;
+        session.user.employeeId = token.employeeId;
       }
       return session;
     },

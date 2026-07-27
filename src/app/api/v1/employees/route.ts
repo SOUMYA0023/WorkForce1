@@ -1,19 +1,22 @@
 import { NextRequest } from "next/server";
 import { apiError, apiSuccess } from "@/lib/api/response";
 import { db } from "@/lib/db";
-import { employees, shiftAssignments } from "@/lib/db/schema";
+import { employees } from "@/lib/db/schema";
 import { createEmployeeSchema } from "@/lib/employees/validation";
 import { logAuditEvent } from "@/lib/audit/logger";
-import { eq, isNull, and, or, ilike, sql, count } from "drizzle-orm";
+import { eq, isNull, and, or, ilike, count } from "drizzle-orm";
 import { auth } from "@/auth";
 import { canPerformAction } from "@/lib/auth/rbac";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
-  const userRole = (session?.user as any)?.role || "super_admin"; // fallback for dev test if unauthenticated in dev
+  if (!session?.user) {
+    return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
 
-  if (session?.user && !canPerformAction(userRole, "EMPLOYEE_VIEW")) {
-    return apiError("AUTH_004", undefined, undefined, 403);
+  const userRole = (session.user as any).role;
+  if (!canPerformAction(userRole, "EMPLOYEE_VIEW")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
   const { searchParams } = new URL(req.url);
@@ -86,11 +89,15 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const session = await auth();
-  const userId = (session?.user as any)?.id || null;
-  const userRole = (session?.user as any)?.role || "super_admin";
+  if (!session?.user) {
+    return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
 
-  if (session?.user && !canPerformAction(userRole, "EMPLOYEE_CREATE")) {
-    return apiError("AUTH_004", undefined, undefined, 403);
+  const userId = (session.user as any).id;
+  const userRole = (session.user as any).role;
+
+  if (!canPerformAction(userRole, "EMPLOYEE_CREATE")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
   try {
@@ -159,7 +166,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Execute insertion & audit log inside DB Transaction (Refinement #15)
+    // Execute insertion & audit log inside DB Transaction
     let createdEmployee: any = null;
     await db.transaction(async (tx) => {
       const [inserted] = await tx

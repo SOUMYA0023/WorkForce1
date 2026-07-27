@@ -30,9 +30,11 @@ export const PERMISSIONS = {
 
   // Shift permissions
   SHIFT_MANAGE: ["super_admin", "admin"] as UserRole[],
+  SHIFT_ASSIGN: ["super_admin", "admin"] as UserRole[],
 
   // Payroll permissions
   PAYROLL_VIEW_EXPORT: ["super_admin", "admin", "hr_payroll"] as UserRole[],
+  PAYROLL_CALCULATE: ["super_admin", "admin", "hr_payroll"] as UserRole[],
 
   // System & Audit permissions
   AUDIT_LOG_VIEW: ["super_admin", "admin"] as UserRole[],

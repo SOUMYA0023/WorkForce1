@@ -10,7 +10,7 @@ import { canPerformAction } from "@/lib/auth/rbac";
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
   if (!session?.user) {
@@ -22,7 +22,7 @@ export async function GET(
     return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
-  const { id } = params;
+  const { id } = await params;
   const employee = await db.query.employees.findFirst({
     where: and(eq(employees.id, id), isNull(employees.deletedAt)),
   });
@@ -36,7 +36,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
   if (!session?.user) {
@@ -50,7 +50,7 @@ export async function PATCH(
     return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
-  const { id } = params;
+  const { id } = await params;
 
   try {
     const existing = await db.query.employees.findFirst({
@@ -120,7 +120,7 @@ export async function PATCH(
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
   if (!session?.user) {
@@ -134,7 +134,7 @@ export async function DELETE(
     return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
-  const { id } = params;
+  const { id } = await params;
 
   try {
     const existing = await db.query.employees.findFirst({

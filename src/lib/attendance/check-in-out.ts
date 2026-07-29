@@ -77,7 +77,7 @@ export async function processAttendanceScan({
     await logAuditEvent({
       userId: scannerUserId,
       action: "ATTENDANCE_SCAN_REJECTED",
-      category: "ATTENDANCE",
+      category: "SECURITY",
       details: { errorCode: claimResult.errorCode, reason: claimResult.errorMessage },
       ipAddress,
       userAgent,
@@ -310,6 +310,15 @@ export async function processAttendanceScan({
     }
 
     recordScanRejection(code, duration);
+
+    await logAuditEvent({
+      userId: scannerUserId,
+      action: "ATTENDANCE_SCAN_REJECTED",
+      category: "SECURITY",
+      details: { errorCode: code, reason: msg },
+      ipAddress,
+      userAgent,
+    });
 
     return {
       success: false,

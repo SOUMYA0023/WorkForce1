@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { employees } from "@/lib/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
 import { auth } from "@/auth";
+import { logAuditEvent } from "@/lib/audit/logger";
 
 export async function POST(req: NextRequest) {
   const session = await auth();
@@ -19,6 +20,14 @@ export async function POST(req: NextRequest) {
   // Rate limiting (max 30 token requests per min per user)
   const rateCheck = checkRateLimit(`qr_gen:${userId}`, 30, 60000);
   if (!rateCheck.isAllowed) {
+    const ip = req.headers.get("x-forwarded-for") || undefined;
+    await logAuditEvent({
+      userId,
+      action: "RATE_LIMIT_EXCEEDED",
+      category: "SECURITY",
+      details: { endpoint: "/api/v1/attendance/qr" },
+      ipAddress: ip,
+    });
     return apiError("SYS_001", "Rate limit exceeded for QR generation.", undefined, 429);
   }
 

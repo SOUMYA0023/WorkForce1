@@ -4,6 +4,7 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { processAttendanceScan } from "@/lib/attendance/check-in-out";
 import { auth } from "@/auth";
 import { canPerformAction } from "@/lib/auth/rbac";
+import { logAuditEvent } from "@/lib/audit/logger";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
@@ -24,6 +25,14 @@ export async function POST(req: NextRequest) {
   // Rate limiting (max 60 scan attempts per minute per scanner account)
   const rateCheck = checkRateLimit(`scan:${userId}`, 60, 60000);
   if (!rateCheck.isAllowed) {
+    await logAuditEvent({
+      userId,
+      action: "RATE_LIMIT_EXCEEDED",
+      category: "SECURITY",
+      details: { endpoint: "/api/v1/attendance/scan" },
+      ipAddress: ip,
+      userAgent,
+    });
     return apiError("SYS_001", "Rate limit exceeded for attendance scanner.", undefined, 429);
   }
 

@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [v0.4.0] - 2026-07-29
+
+### Phase 4 – Live Attendance Dashboard & Exception Workflow
+
+#### Added
+- **Transactional Attendance Corrections Domain Service (`src/lib/corrections/corrections-service.ts`)**:
+  - **Single Database Transaction**: Wraps event updates, immutable ledger appends, ADR §8 payroll recalculation, and audit logs in `db.transaction(...)`.
+  - **Segregation of Duties Enforcement (SR-006)**: Strictly blocks self-approval attempts (`approvedBy !== correctedBy`), surfacing error `CORR_002`.
+  - **Submission Role Enforcement**: Restricts correction submission to `super_admin`, `admin`, `hr_payroll`. Blocks `gate_operator` and `employee` roles.
+  - **Append-Only Deletion Logic**: Deletion corrections write a voiding ledger entry—never performing a SQL `DELETE` on events or ledger (SR-012, NFR-003).
+  - **SHA-256 Ledger Record Hash Chaining**: Ledger entry hashes are chained using `${employeeId}|${eventType}|${eventDate}|${eventTimestamp}|${shiftId}|${workedSeconds}|${previousHash}`.
+- **Monitoring & Set-Based Exception Service (`src/lib/attendance/monitoring-service.ts`)**:
+  - **Server-Side Stats Cache**: 3.5-second TTL in-memory cache for `getLiveMonitoringStats` to minimize PostgreSQL load from 5-second polling (ADR §10).
+  - **Set-Based SQL Exception Queue**: High-performance set-based SQL queries returning `missing_check_out`, `missing_check_in`, `unassigned_shift`, `late_arrival`, and `early_exit` without per-employee JS loops.
+- **Standardized API v1 Endpoints**:
+  - `GET /api/v1/attendance/monitoring` (blocks `employee` role).
+  - `GET /api/v1/attendance/exceptions` (blocks `employee` & `gate_operator` roles).
+  - `GET/POST /api/v1/corrections` (restricts `POST` to admin/super_admin/hr_payroll).
+  - `POST /api/v1/corrections/[id]/approve` (enforces segregation of duties).
+  - `POST /api/v1/corrections/[id]/reject`.
+- **Administrative & Monitoring UI Pages**:
+  - `/monitoring`: Live Gate Attendance Monitoring Dashboard with 5s polling toggle and stat metrics cards.
+  - `/corrections`: Exception Resolution Queue and Correction Request Log with mandatory reason modal.
+- **Integration Test Suite**: `tests/corrections.test.ts`.
+
+---
+
 ## [v0.3.0] - 2026-07-27
 
 ### Phase 3 – Attendance Intelligence, Shift Management & Payroll/Overtime Engine

@@ -1,8 +1,14 @@
 /**
  * In-Memory Sliding Window Rate Limiter (SR-008, Refinement #13)
  *
- * Prevents brute force login attacks and endpoint abuse.
- * Configured per route type (e.g. login: 5 requests / min per IP).
+ * PERSISTENCE & DEPLOYMENT ARCHITECTURE MODEL:
+ * 1. Single-VPS Deployment (Target Architecture per PRD §1.2 & §10.4):
+ *    State is held in Node.js process memory (`const store`). This provides
+ *    sub-millisecond rate limit checks with zero external network overhead (e.g., Redis).
+ * 2. Multi-Instance Scaling Limitation & Mitigation:
+ *    If deployed across multiple load-balanced Node.js instances or serverless containers,
+ *    counters are process-isolated. For horizontal scaling, `store` can be backed by Redis
+ *    without altering the `checkRateLimit` function signature.
  */
 
 interface RateLimitStore {

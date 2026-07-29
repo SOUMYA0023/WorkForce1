@@ -35,6 +35,13 @@ export const ERROR_CODES = {
   ATT_009: "Attendance submitted outside allowed shift window.",
   ATT_010: "Unexpected server error during attendance processing.",
 
+  // Correction Errors (Phase 4)
+  CORR_001: "Mandatory reason capture required for attendance correction.",
+  CORR_002: "Segregation of duties violation: Submitter cannot approve their own correction request.",
+  CORR_003: "Forbidden. Insufficient permissions for attendance correction workflow.",
+  CORR_004: "Correction request not found.",
+  CORR_005: "Correction request status prevents this action.",
+
   // System & Rate Limiting Errors
   SYS_001: "Too many requests. Please try again later.",
   SYS_002: "Internal server error.",

@@ -50,16 +50,27 @@ Target Platform: Version 1 Commercial SaaS Baseline (`v0.3.0`)
 
 ---
 
-### ⬜ Phase 4 — Live Attendance Dashboard & Exception Workflow
-- Real-time gate attendance monitoring dashboard with near real-time polling (ADR §10).
+### ✅ Phase 4 — Live Attendance Dashboard & Exception Workflow (`v0.4.0`)
+- Real-time gate attendance monitoring dashboard with 5-second polling (ADR §10) and 3.5s server-side caching.
 - Gate operator live feed displaying check-ins/outs in real time.
-- Attendance exception queue (missing check-out, unassigned shift, late arrival).
-- Authorized attendance correction workflow (`corrections` table) with mandatory reason capture and admin approval.
+- Set-based SQL attendance exception queue (missing check-out, unassigned shift, late arrival).
+- Authorized attendance correction workflow (`corrections` table) wrapped in a single DB transaction with mandatory reason capture, segregation of duties enforcement (`approvedBy !== correctedBy`), append-only deletion logic, and ADR §8 automatic payroll recalculation.
 
-### ⬜ Phase 5 — Advanced Analytics & Enterprise Reporting
-- Overtime & undertime summary reports by department and designation.
-- High-speed CSV/XLSX export for downstream enterprise ERP software integration.
-- Audit trail reporting for compliance audits (FR-047).
+### ✅ Phase 5 — Advanced Analytics & Enterprise Reporting (`v0.5.0`)
+- **Reporting Engine** (`src/lib/reports/reporting-service.ts`): All 10 required enterprise reports (RR-001 through RR-010) with cursor-based pagination (max 200 rows/page), filterable by date range, department, shift, employee (FR-040).
+- **Multi-Format Export** (FR-041, FR-042): JSON (paginated API), CSV (papaparse), and XLSX (xlsx) downloads with 10,000-row safety cap for exports.
+- **Audit Log Report** (RR-010, SR-005): Supports filtering by all 7 audit categories — AUTH, EMPLOYEE, SHIFT, PAYROLL, ATTENDANCE, SYSTEM, SECURITY — with validated category input.
+- **RBAC Enforcement**: Employee role blocked from all reports (403). Gate operator restricted to daily attendance only. Payroll and audit log reports require specific RBAC permissions.
+- **Format-Only Export** (FR-034, PW-005): Payroll export reuses pre-computed values from Phase 3 payroll engine — zero business recalculation.
+
+### ✅ Phase 6 — Security Hardening & Audit Logging Completion (`v0.6.0`)
+- **Security Headers (SR-001)**: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Strict-Transport-Security` configured in `next.config.ts`.
+- **Complete Audit Trail (SR-005 & SR-014)**: Full audit logging across all required categories (AUTH, ATTENDANCE, CORRECTION, CONFIG, EXPORT, SECURITY, EMPLOYEE, SHIFT, PAYROLL, SYSTEM).
+- **Security Violations & Rate Limiting (SR-008, SR-014)**: Rate limiting enforced on all sensitive endpoints (login, QR generation, scanning, bulk import, payroll export, reports API) with rate-limit breaches, account lockouts, and rejected/replayed/forged QR token attempts logged under `category: "SECURITY"`.
+- **System Config Management (FR-045, NFR-007)**: Added `/api/v1/config` (GET & PATCH) endpoint for policy threshold management, logged under `category: "CONFIG"`.
+- **Immutability (SR-012)**: `audit_logs` and `attendance_ledger` verified append-only with zero `updatedAt` fields in schema.
+- **Security Test Suite**: `tests/security-hardening.test.ts` (6 passing tests).
+
 
 ### ⬜ Phase 6 — Mobile QR App & Gate Scanner PWA
 - Camera-based QR code scanner stream (`html5-qrcode`) for gate operators.

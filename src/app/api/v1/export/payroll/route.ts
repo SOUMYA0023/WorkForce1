@@ -1,15 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
+import { checkRateLimit } from "@/lib/api/rate-limit";
 import { apiError } from "@/lib/api/response";
 import { db } from "@/lib/db";
 import { payrollRecords, employees, shifts } from "@/lib/db/schema";
 import { exportPayrollToCsv, exportPayrollToXlsx } from "@/lib/export/export-service";
 import { eq, desc } from "drizzle-orm";
 import { auth } from "@/auth";
+import { canPerformAction } from "@/lib/auth/rbac";
+import { logAuditEvent } from "@/lib/audit/logger";
 
 export async function GET(req: NextRequest) {
+  const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateCheck = checkRateLimit(`export_payroll:${ip}`, 10, 60000);
+  if (!rateCheck.isAllowed) {
+    await logAuditEvent({
+      action: "RATE_LIMIT_EXCEEDED",
+      category: "SECURITY",
+      details: { endpoint: "/api/v1/export/payroll" },
+      ipAddress: ip,
+    });
+    return apiError("SYS_001", "Rate limit exceeded for payroll export.", undefined, 429);
+  }
+
   const session = await auth();
   if (!session?.user) {
     return apiError("AUTH_003", "Authentication required.", undefined, 401);
+  }
+
+  const userRole = (session.user as any).role;
+  if (!canPerformAction(userRole, "PAYROLL_VIEW_EXPORT")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions for payroll export.", undefined, 403);
   }
 
   const { searchParams } = new URL(req.url);
@@ -50,6 +70,16 @@ export async function GET(req: NextRequest) {
       lateArrivalMinutes: Math.floor((r.lateArrivalSeconds || 0) / 60),
       isFinalized: r.isFinalized ? "YES" : "NO",
     }));
+
+    await logAuditEvent({
+      userId: (session.user as any).id,
+      action: "PAYROLL_EXPORT",
+      category: "EXPORT",
+      resourceType: "payroll",
+      details: { format, recordCount: exportRows.length },
+      ipAddress: req.headers.get("x-forwarded-for") || undefined,
+      userAgent: req.headers.get("user-agent") || undefined,
+    });
 
     if (format === "xlsx") {
       const buffer = exportPayrollToXlsx(exportRows);

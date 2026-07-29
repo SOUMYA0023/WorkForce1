@@ -152,6 +152,7 @@ export const attendanceLedger = pgTable(
     isEarlyExit: boolean("is_early_exit").notNull().default(false), // FR-022
     earlyExitSeconds: integer("early_exit_seconds").notNull().default(0),
     recordHash: varchar("record_hash", { length: 255 }).notNull(), // Tamper detection
+    previousHash: varchar("previous_hash", { length: 255 }), // Blockchain-style hash chaining (SR-012)
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

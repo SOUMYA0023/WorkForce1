@@ -4,11 +4,17 @@ import { db } from "@/lib/db";
 import { employees, importBatches } from "@/lib/db/schema";
 import { count, isNull, eq, and, sql } from "drizzle-orm";
 import { auth } from "@/auth";
+import { canPerformAction } from "@/lib/auth/rbac";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user) {
     return apiError("AUTH_003", "Authentication required. Please sign in.", undefined, 401);
+  }
+
+  const userRole = (session.user as any).role;
+  if (!canPerformAction(userRole, "EMPLOYEE_VIEW")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions.", undefined, 403);
   }
 
   try {

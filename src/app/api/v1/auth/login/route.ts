@@ -13,6 +13,12 @@ export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateCheck = checkRateLimit(`login:${ip}`, 10, 60000);
   if (!rateCheck.isAllowed) {
+    await logAuditEvent({
+      action: "RATE_LIMIT_EXCEEDED",
+      category: "SECURITY",
+      details: { endpoint: "/api/v1/auth/login", ip },
+      ipAddress: ip,
+    });
     return apiError("SYS_001", undefined, undefined, 429);
   }
 
@@ -48,7 +54,7 @@ export async function POST(req: NextRequest) {
       await logAuditEvent({
         userId: user.id,
         action: "LOGIN_BLOCKED_LOCKED",
-        category: "AUTH",
+        category: "SECURITY",
         details: { email: normalizedEmail, remainingMinutes: lockout.remainingMinutes },
         ipAddress: ip,
         userAgent,
@@ -106,7 +112,7 @@ export async function POST(req: NextRequest) {
       await logAuditEvent({
         userId: user.id,
         action: lockoutRes.isNowLocked ? "ACCOUNT_LOCKED" : "LOGIN_FAILED",
-        category: "AUTH",
+        category: lockoutRes.isNowLocked ? "SECURITY" : "AUTH",
         details: {
           email: normalizedEmail,
           attempts: user.failedLoginAttempts + 1,

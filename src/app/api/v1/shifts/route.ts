@@ -10,6 +10,11 @@ export async function GET(req: NextRequest) {
     return apiError("AUTH_003", "Authentication required.", undefined, 401);
   }
 
+  const userRole = (session.user as any).role;
+  if (userRole === "employee") {
+    return apiError("AUTH_004", "Forbidden. Employee role cannot view shift management templates.", undefined, 403);
+  }
+
   try {
     const shiftsList = await listShifts();
     return apiSuccess(shiftsList);

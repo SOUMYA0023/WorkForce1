@@ -9,8 +9,12 @@
  * - EMPLOYEE   — Create, update, soft delete, status change, bulk import
  * - SHIFT      — Shift templates, shift assignment changes
  * - PAYROLL    — Payroll computation, recalculation, finalization
- * - ATTENDANCE — Check-in/check-out, QR generation/validation, overrides
- * - SYSTEM     — System configuration changes, policy threshold updates
+ * - ATTENDANCE — Check-in/check-out, QR generation/validation
+ * - CORRECTION — Attendance correction submissions, approvals, rejections
+ * - CONFIG     — System configuration changes, policy threshold updates
+ * - SYSTEM     — System administration & maintenance operations
+ * - EXPORT     — Spreadsheet, report, and payroll data exports
+ * - SECURITY   — Segregation of duties violations, privilege escalation attempts, access policy breaches
  */
 
 import {
@@ -32,7 +36,11 @@ export const auditCategoryEnum = pgEnum("audit_category", [
   "SHIFT",
   "PAYROLL",
   "ATTENDANCE",
+  "CORRECTION",
+  "CONFIG",
   "SYSTEM",
+  "EXPORT",
+  "SECURITY",
 ]);
 
 // ── Audit Logs Table ───────────────────────────────────────────────────

@@ -8,6 +8,7 @@
  * - PAYROLL    (Calculations, recalculation triggers)
  * - ATTENDANCE (Tokens, events, overrides)
  * - SYSTEM     (Config changes)
+ * - SECURITY   (Segregation of duties violations, access policy breaches)
  *
  * Captures request ID, session ID, IP address, user agent, browser, OS,
  * timestamp, result, and failure reason in details JSON.
@@ -22,7 +23,11 @@ export type AuditCategory =
   | "SHIFT"
   | "PAYROLL"
   | "ATTENDANCE"
-  | "SYSTEM";
+  | "CORRECTION"
+  | "CONFIG"
+  | "SYSTEM"
+  | "EXPORT"
+  | "SECURITY";
 
 export interface LogAuditParams {
   userId?: string | null;

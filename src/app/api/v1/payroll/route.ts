@@ -13,9 +13,22 @@ export async function GET(req: NextRequest) {
     return apiError("AUTH_003", "Authentication required.", undefined, 401);
   }
 
+  const userId = (session.user as any).id;
+  const userRole = (session.user as any).role;
+  const sessionEmployeeId = (session.user as any).employeeId;
+
   const { searchParams } = new URL(req.url);
-  const employeeId = searchParams.get("employeeId");
+  let employeeId = searchParams.get("employeeId");
   const periodDate = searchParams.get("periodDate");
+
+  if (userRole === "employee") {
+    if (!sessionEmployeeId) {
+      return apiError("AUTH_004", "Forbidden. No employee profile linked to user.", undefined, 403);
+    }
+    employeeId = sessionEmployeeId; // Force employee to only view their own payroll records
+  } else if (!canPerformAction(userRole, "PAYROLL_VIEW_EXPORT")) {
+    return apiError("AUTH_004", "Forbidden. Insufficient role permissions for payroll records.", undefined, 403);
+  }
   const page = parseInt(searchParams.get("page") || "1", 10);
   const limit = parseInt(searchParams.get("limit") || "20", 10);
   const offset = (page - 1) * limit;

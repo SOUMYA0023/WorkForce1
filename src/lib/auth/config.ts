@@ -22,6 +22,34 @@ export const authOptions: any = {
     strategy: "jwt", // JWT for fast edge token inspection & seamless API verification
     maxAge: (parseInt(process.env.SESSION_TIMEOUT_MINUTES || "30", 10)) * 60,
   },
+  cookies: {
+    sessionToken: {
+      name: process.env.NODE_ENV === "production" ? "__Secure-authjs.session-token" : "authjs.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    callbackUrl: {
+      name: process.env.NODE_ENV === "production" ? "__Secure-authjs.callback-url" : "authjs.callback-url",
+      options: {
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+    csrfToken: {
+      name: process.env.NODE_ENV === "production" ? "__Host-authjs.csrf-token" : "authjs.csrf-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
+  },
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -59,7 +87,7 @@ export const authOptions: any = {
           await logAuditEvent({
             userId: user.id,
             action: "LOGIN_BLOCKED_LOCKED",
-            category: "AUTH",
+            category: "SECURITY",
             details: { email, remainingMinutes: lockout.remainingMinutes },
             ipAddress,
             userAgent,
@@ -114,7 +142,7 @@ export const authOptions: any = {
           await logAuditEvent({
             userId: user.id,
             action: lockoutResult.isNowLocked ? "ACCOUNT_LOCKED" : "LOGIN_FAILED",
-            category: "AUTH",
+            category: lockoutResult.isNowLocked ? "SECURITY" : "AUTH",
             details: {
               email,
               attempts: user.failedLoginAttempts + 1,

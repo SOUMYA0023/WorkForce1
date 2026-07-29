@@ -4,11 +4,18 @@ import { apiError, apiSuccess } from "@/lib/api/response";
 import { processEmployeeImport } from "@/lib/employees/import-engine";
 import { auth } from "@/auth";
 import { canPerformAction } from "@/lib/auth/rbac";
+import { logAuditEvent } from "@/lib/audit/logger";
 
 export async function POST(req: NextRequest) {
   const ip = req.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateCheck = checkRateLimit(`import:${ip}`, 5, 60000);
   if (!rateCheck.isAllowed) {
+    await logAuditEvent({
+      action: "RATE_LIMIT_EXCEEDED",
+      category: "SECURITY",
+      details: { endpoint: "/api/v1/employees/import" },
+      ipAddress: ip,
+    });
     return apiError("SYS_001", "Rate limit exceeded for bulk import.", undefined, 429);
   }
 
